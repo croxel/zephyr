@@ -1,0 +1,19 @@
+description: |
+  Worldsemi WS2812 LED strip, UART binding
+
+  Driver bindings for controlling a WS2812 or compatible LED
+  strip with a Uart.
+
+  The Uart driver should be usable as long as a zephyr Uart API driver
+  is available for your board. Hardware specific tuning is required
+  using these properties:
+
+    - uart-baudrate
+
+  Use of this driver implies an 8x internal memory overhead (1 byte of
+  driver RAM overhead per bit of pixel data).
+
+compatible: "worldsemi,ws2812-uart"
+
+include: [uart-controller.yaml, ws2812.yaml]
+
