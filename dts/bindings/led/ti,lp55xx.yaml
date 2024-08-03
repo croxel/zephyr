@@ -1,0 +1,59 @@
+# Copyright (c) 2024 Croxel Inc
+# SPDX-License-Identifier: Apache-2.0
+
+include: ["i2c-device.yaml", "led-controller.yaml"]
+
+properties:
+  red-output-current:
+    type: int
+    default: 175
+    description: Output current of red channel in 0.1 mA (0-25.5 mA).
+                 Default value is the power-on default. Valid range = 0 - 255
+
+  green-output-current:
+    type: int
+    default: 175
+    description: Output current of green channel in 0.1 mA (0-25.5 mA)
+                 Default value is the power-on default. Valid range = 0 - 255
+
+  blue-output-current:
+    type: int
+    default: 175
+    description: Output current of blue channel in 0.1 mA (0-25.5 mA)
+                 Default value is the power-on default. Valid range = 0 - 255
+
+  clk-sel:
+    type: int
+    default: 3
+    enum:
+      - 0
+      - 1
+      - 2
+      - 3
+    description: select clock 0 => external, 1/3 => internal, 2=> auto-detect
+
+  hf-pwm-dis:
+    type: boolean
+    description: Enable high frequency pwm
+
+  power-save-dis:
+    type: boolean
+    description: Enable power save mode
+
+  en-gpios:
+    type: phandle-array
+    description: |
+      GPIO to enable LP55XX (both Charge-pump and Digital Communications interface).
+      If not provided, user must ensure enable pin is already asserted externally (e.g:
+      pull-up resistor).
+
+  log-scale-en:
+    type: boolean
+    description: |
+      Use logarithmic scale for pwm values instead of default linear scaling
+
+  active-low:
+    type: boolean
+    description: |
+      Are led's connected in active low or active high
+

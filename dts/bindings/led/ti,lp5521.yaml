@@ -1,0 +1,20 @@
+description: TI LP5521 LED
+
+compatible: "ti,lp5521"
+
+include: ti,lp55xx.yaml
+
+properties:
+  charge-pump-mode:
+    type: int
+    default: 3
+    enum:
+      - 0
+      - 1
+      - 2
+      - 3
+    description: configure charge-pump mode, 0=>off, 1=>1x, 2=>1.5x, 3=>auto
+
+  red-charge-pump-bypass:
+    type: boolean
+    description: bypass charge-pump for reg led, and connect it directly to batt

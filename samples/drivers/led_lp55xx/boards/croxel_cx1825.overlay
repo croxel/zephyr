@@ -1,0 +1,11 @@
+&i2c0 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	lp5521: lp5521@32 {
+		status = "okay";
+		compatible = "ti,lp5521";
+		reg = <0x32>;
+		en-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+	};
+};
