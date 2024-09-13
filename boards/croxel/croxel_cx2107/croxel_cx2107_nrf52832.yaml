@@ -1,0 +1,18 @@
+identifier: croxel_cx2107/nrf52832
+name: Croxel-CX2107-NRF52832
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 64
+flash: 512
+supported:
+  - gpio
+  - counter
+  - nvs
+  - i2c
+  - pwm
+  - watchdog
+vendor: croxel
