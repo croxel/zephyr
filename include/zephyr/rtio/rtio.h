@@ -35,6 +35,7 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/mem_blocks.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/sys_clock.h>
 #include <zephyr/sys/iterable_sections.h>
 #include <zephyr/sys/mpsc_lockfree.h>
 
@@ -336,6 +337,13 @@ struct rtio_sqe {
 			uint8_t *rx_buf; /**< Buffer to read into */
 		} txrx;
 
+		/** OP_DELAY */
+		struct {
+			k_timeout_t timeout; /**< Delay timeout. */
+			k_timepoint_t deadline; /**< Absolute deadline. Used internally. */
+			sys_snode_t node; /**< Slist node. Used internally */
+		} delay;
+
 		/** OP_I2C_CONFIGURE */
 		uint32_t i2c_config;
 
@@ -540,8 +548,11 @@ struct rtio_iodev {
 /** An operation that transceives (reads and writes simultaneously) */
 #define RTIO_OP_TXRX (RTIO_OP_CALLBACK+1)
 
+/** An operation that takes a specified amount of time (asynchronously) before completing */
+#define RTIO_OP_DELAY (RTIO_OP_TXRX+1)
+
 /** An operation to recover I2C buses */
-#define RTIO_OP_I2C_RECOVER (RTIO_OP_TXRX+1)
+#define RTIO_OP_I2C_RECOVER (RTIO_OP_DELAY+1)
 
 /** An operation to configure I2C buses */
 #define RTIO_OP_I2C_CONFIGURE (RTIO_OP_I2C_RECOVER+1)
@@ -714,6 +725,18 @@ static inline void rtio_sqe_prep_transceive(struct rtio_sqe *sqe,
 	sqe->txrx.buf_len = buf_len;
 	sqe->txrx.tx_buf = tx_buf;
 	sqe->txrx.rx_buf = rx_buf;
+	sqe->userdata = userdata;
+}
+
+static inline void rtio_sqe_prep_delay(struct rtio_sqe *sqe,
+				       k_timeout_t timeout,
+				       void *userdata)
+{
+	memset(sqe, 0, sizeof(struct rtio_sqe));
+	sqe->op = RTIO_OP_DELAY;
+	sqe->prio = 0;
+	sqe->iodev = NULL;
+	sqe->delay.timeout = timeout;
 	sqe->userdata = userdata;
 }
 
