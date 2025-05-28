@@ -1,0 +1,3 @@
+i2s_rxtx: &i2s0 {
+    status = "okay";
+};

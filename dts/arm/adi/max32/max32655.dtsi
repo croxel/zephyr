@@ -132,5 +132,15 @@
 			interrupts = <67 0>;
 			status = "disabled";
 		};
+
+		i2s0: i2s0@40060000 {
+			compatible = "adi,max32-i2s";
+			reg = <0x40060000 0x1000>;
+			interrupts = <99 0>;
+			clock-frequency = <12288000>;
+			dma-channels = <2>;
+			word-size = <32>;
+			dai-format = "i2s";
+		};
 	};
 };
