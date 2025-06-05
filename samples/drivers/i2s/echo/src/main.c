@@ -20,12 +20,22 @@
 #define I2S_TX_NODE  DT_NODELABEL(i2s_tx)
 #endif
 
+#if CONFIG_BOARD_MAX32655FTHR_MAX32655_M4
+#define SAMPLE_FREQUENCY    48000
+#define SAMPLE_BIT_WIDTH    16
+#define BYTES_PER_SAMPLE    sizeof(int16_t)
+#define NUMBER_OF_CHANNELS  1
+/* Such block length provides an echo with the delay of 50 ms. */
+#define SAMPLES_PER_BLOCK   ((SAMPLE_FREQUENCY / 20) * NUMBER_OF_CHANNELS)
+#else
 #define SAMPLE_FREQUENCY    44100
 #define SAMPLE_BIT_WIDTH    16
 #define BYTES_PER_SAMPLE    sizeof(int16_t)
 #define NUMBER_OF_CHANNELS  2
 /* Such block length provides an echo with the delay of 100 ms. */
 #define SAMPLES_PER_BLOCK   ((SAMPLE_FREQUENCY / 10) * NUMBER_OF_CHANNELS)
+#endif
+
 #define INITIAL_BLOCKS      2
 #define TIMEOUT             1000
 
@@ -258,6 +268,12 @@ int main(void)
 	}
 #endif
 
+#if DT_ON_BUS(MAX9867_NODE, i2c)
+	if (!init_max9867_i2c()) {
+		return 0;
+	}
+#endif
+
 	if (!init_buttons()) {
 		return 0;
 	}
@@ -275,7 +291,11 @@ int main(void)
 	config.word_size = SAMPLE_BIT_WIDTH;
 	config.channels = NUMBER_OF_CHANNELS;
 	config.format = I2S_FMT_DATA_FORMAT_I2S;
+#if CONFIG_BOARD_MAX32655FTHR_MAX32655_M4
+	config.options = I2S_OPT_BIT_CLK_SLAVE | I2S_OPT_FRAME_CLK_SLAVE;
+#else
 	config.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
+#endif
 	config.frame_clk_freq = SAMPLE_FREQUENCY;
 	config.mem_slab = &mem_slab;
 	config.block_size = BLOCK_SIZE;

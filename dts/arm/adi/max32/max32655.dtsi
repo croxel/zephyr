@@ -149,5 +149,16 @@
 			interrupts = <67 0>;
 			status = "disabled";
 		};
+
+		i2s0: i2s0@40060000 {
+			compatible = "adi,max32-i2s";
+			reg = <0x40060000 0x1000>;
+			interrupts = <99 0>;
+			clock-frequency = <12288000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			dmas = <&dma0 0 0x3e>, <&dma0 1 0x1e>;
+			dma-names = "tx", "rx";
+		};
 	};
 };

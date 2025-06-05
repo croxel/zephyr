@@ -8,6 +8,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/sys/iterable_sections.h>
+#include "codec.h"
 
 #define SAMPLE_NO 64
 
@@ -40,7 +41,7 @@ static void fill_buf(int16_t *tx_block, int att)
 	}
 }
 
-#define NUM_BLOCKS 20
+#define NUM_BLOCKS 4
 #define BLOCK_SIZE (2 * sizeof(data))
 
 #ifdef CONFIG_NOCACHE_MEMORY
@@ -58,11 +59,16 @@ static STRUCT_SECTION_ITERABLE(k_mem_slab, tx_0_mem_slab) =
 
 int main(void)
 {
-	void *tx_block[NUM_BLOCKS];
 	struct i2s_config i2s_cfg;
 	int ret;
 	uint32_t tx_idx;
 	const struct device *dev_i2s = DEVICE_DT_GET(DT_ALIAS(i2s_tx));
+
+#if DT_ON_BUS(MAX9867_NODE, i2c)
+	if (!init_max9867_i2c()) {
+		return 0;
+	}
+#endif
 
 	if (!device_is_ready(dev_i2s)) {
 		printf("I2S device not ready\n");
@@ -76,8 +82,11 @@ int main(void)
 	i2s_cfg.block_size = BLOCK_SIZE;
 	i2s_cfg.timeout = 2000;
 	/* Configure the Transmit port as Master */
-	i2s_cfg.options = I2S_OPT_FRAME_CLK_MASTER
-			| I2S_OPT_BIT_CLK_MASTER;
+#if CONFIG_BOARD_MAX32655FTHR_MAX32655_M4
+	i2s_cfg.options = I2S_OPT_BIT_CLK_SLAVE | I2S_OPT_FRAME_CLK_SLAVE;
+#else
+	i2s_cfg.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
+#endif
 	i2s_cfg.mem_slab = &tx_0_mem_slab;
 	ret = i2s_configure(dev_i2s, I2S_DIR_TX, &i2s_cfg);
 	if (ret < 0) {
@@ -85,24 +94,22 @@ int main(void)
 		return ret;
 	}
 
-	/* Prepare all TX blocks */
+	/* Prepare and queue TX blocks */
 	for (tx_idx = 0; tx_idx < NUM_BLOCKS; tx_idx++) {
-		ret = k_mem_slab_alloc(&tx_0_mem_slab, &tx_block[tx_idx],
-				       K_FOREVER);
+		ret = k_mem_slab_alloc(&tx_0_mem_slab, &tx_block[tx_idx], K_FOREVER);
 		if (ret < 0) {
 			printf("Failed to allocate TX block\n");
 			return ret;
 		}
 		fill_buf((uint16_t *)tx_block[tx_idx], tx_idx % 3);
+		/* Write the block to the I2S TX queue */
+		ret = i2s_write(dev_i2s, tx_block[tx_idx++], BLOCK_SIZE);
+		if (ret < 0) {
+			printf("Could not write TX buffer %d\n", tx_idx);
+			return ret;
+		}
 	}
 
-	tx_idx = 0;
-	/* Send first block */
-	ret = i2s_write(dev_i2s, tx_block[tx_idx++], BLOCK_SIZE);
-	if (ret < 0) {
-		printf("Could not write TX buffer %d\n", tx_idx);
-		return ret;
-	}
 	/* Trigger the I2S transmission */
 	ret = i2s_trigger(dev_i2s, I2S_DIR_TX, I2S_TRIGGER_START);
 	if (ret < 0) {
@@ -110,8 +117,18 @@ int main(void)
 		return ret;
 	}
 
-	for (; tx_idx < NUM_BLOCKS; ) {
-		ret = i2s_write(dev_i2s, tx_block[tx_idx++], BLOCK_SIZE);
+	/* Play for two seconds + 4 block */
+	while(k_uptime_get() < 2000) {
+		/* Wait for the TX queue to have space for another block */
+		ret = k_mem_slab_alloc(&tx_0_mem_slab, &tx_block_cont, K_FOREVER);
+		if (ret < 0) {
+			printf("Failed to allocate TX block\n");
+			return ret;
+		}
+		fill_buf(tx_block_cont, tx_idx % 3);
+		tx_idx++;
+		/* Write the block to the I2S TX queue */
+		ret = i2s_write(dev_i2s, tx_block_cont, BLOCK_SIZE);
 		if (ret < 0) {
 			printf("Could not write TX buffer %d\n", tx_idx);
 			return ret;
@@ -123,6 +140,7 @@ int main(void)
 		printf("Could not trigger I2S tx\n");
 		return ret;
 	}
+	k_msleep(100);
 	printf("All I2S blocks written\n");
 	return 0;
 }

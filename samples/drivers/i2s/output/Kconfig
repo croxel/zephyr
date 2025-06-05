@@ -1,0 +1,7 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config I2C
+	default $(dt_compat_on_bus,$(DT_COMPAT_ADI_MAX9867),i2c)
