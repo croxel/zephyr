@@ -20,21 +20,12 @@
 #define I2S_TX_NODE  DT_NODELABEL(i2s_tx)
 #endif
 
-#if CONFIG_BOARD_MAX32655FTHR_MAX32655_M4
-#define SAMPLE_FREQUENCY    48000
-#define SAMPLE_BIT_WIDTH    16
-#define BYTES_PER_SAMPLE    sizeof(int16_t)
-#define NUMBER_OF_CHANNELS  1
-/* Such block length provides an echo with the delay of 50 ms. */
-#define SAMPLES_PER_BLOCK   ((SAMPLE_FREQUENCY / 20) * NUMBER_OF_CHANNELS)
-#else
 #define SAMPLE_FREQUENCY    44100
 #define SAMPLE_BIT_WIDTH    16
 #define BYTES_PER_SAMPLE    sizeof(int16_t)
 #define NUMBER_OF_CHANNELS  2
 /* Such block length provides an echo with the delay of 100 ms. */
-#define SAMPLES_PER_BLOCK   ((SAMPLE_FREQUENCY / 10) * NUMBER_OF_CHANNELS)
-#endif
+#define SAMPLES_PER_BLOCK   ((SAMPLE_FREQUENCY / 50) * NUMBER_OF_CHANNELS)
 
 #define INITIAL_BLOCKS      2
 #define TIMEOUT             1000

@@ -5,3 +5,18 @@ source "Kconfig.zephyr"
 
 config I2C
 	default $(dt_compat_on_bus,$(DT_COMPAT_ADI_MAX9867),i2c)
+
+choice I2S_OUTPUT_TEST
+	prompt "I2S output wave"
+	default I2S_OUTPUT_TEST_WAV_PCM_SAMPLE if $(dt_compat_on_bus,$(DT_COMPAT_ADI_MAX9867),i2c)
+	default I2S_OUTPUT_TEST_SINE_WAVE
+	help
+	  Select the type of wave to output on the I2S interface.
+
+	config I2S_OUTPUT_TEST_SINE_WAVE
+		bool "Sine wave"
+
+	config I2S_OUTPUT_TEST_WAV_PCM_SAMPLE
+		bool "WAV sample"
+
+endchoice

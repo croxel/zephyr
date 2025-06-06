@@ -147,7 +147,7 @@ static inline int start_stream(const struct i2s_max32_stream *stream, enum i2s_d
 	/* Configure DMA channel */
 	ret = dma_config(stream->dma.dev, stream->dma.channel, &dma_cfg);
 	if (ret < 0) {
-		LOG_ERR("DMA config failed");
+		LOG_ERR("DMA config failed with error: %d", ret);
 		goto start_stream_error;
 	}
 
@@ -160,7 +160,7 @@ static inline int start_stream(const struct i2s_max32_stream *stream, enum i2s_d
 	/* Start DMA transfer */
 	ret = dma_start(stream->dma.dev, stream->dma.channel);
 	if (ret < 0) {
-		LOG_ERR("DMA start failed");
+		LOG_ERR("DMA start failed with error: %d", ret);
 		goto start_stream_error;
 	}
 

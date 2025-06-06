@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021 Nordic Semiconductor ASA
+ * Copyright (c) 2021 Croxel Inc
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -261,8 +262,8 @@ bool init_max9867_i2c(void)
 		 */
 		{MAX9867_05_SYS_CLK, 0x01 << MAX9867_PSCLK_POS},
 		/* Configure codec to generate 48kHz sampling frequency in master mode */
-		{MAX9867_06_CLK_HIGH, MAX9867_NI_UPPER_48KHZ},
-		{MAX9867_07_CLK_LOW, MAX9867_NI_LOWER_OTHER},
+		{MAX9867_06_CLK_HIGH, MAX9867_NI_UPPER_44p1KHZ},
+		{MAX9867_07_CLK_LOW, MAX9867_NI_LOWER_44p1KHZ},
 		{MAX9867_09_DAI_CLOCK, MAX9867_BSEL_PCLK_DIV8},
 		/* I2S format */
 		{MAX9867_08_DAI_FORMAT, MAX9867_MAS | MAX9867_DLY | MAX9867_HIZOFF},
