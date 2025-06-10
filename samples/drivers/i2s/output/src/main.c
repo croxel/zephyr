@@ -59,7 +59,7 @@ static STRUCT_SECTION_ITERABLE(k_mem_slab, tx_0_mem_slab) =
 
 int main(void)
 {
-	void *tx_block[NUM_BLOCKS];
+	void* tx_block;
 	struct i2s_config i2s_cfg;
 	int ret;
 	uint32_t tx_idx;
@@ -95,23 +95,21 @@ int main(void)
 		return ret;
 	}
 
-	/* Prepare all TX blocks */
-	for (tx_idx = 0; tx_idx < NUM_BLOCKS; tx_idx++) {
-		ret = k_mem_slab_alloc(&tx_0_mem_slab, &tx_block[tx_idx],
-				       K_FOREVER);
+	/* Prepare couple of tx block to get started */
+	for (tx_idx = 0; tx_idx < 2; tx_idx++) {
+		ret = k_mem_slab_alloc(&tx_0_mem_slab, &tx_block, K_FOREVER);
 		if (ret < 0) {
 			printf("Failed to allocate TX block\n");
 			return ret;
 		}
-		fill_buf((uint16_t *)tx_block[tx_idx], tx_idx % 3);
-	}
-
-	tx_idx = 0;
-	/* Send first block */
-	ret = i2s_write(dev_i2s, tx_block[tx_idx++], BLOCK_SIZE);
-	if (ret < 0) {
-		printf("Could not write TX buffer %d\n", tx_idx);
-		return ret;
+		/* Fill the TX block with sine wave data */
+		fill_buf((uint16_t *)tx_block, tx_idx % 3);
+		/* Write the TX block to the I2S device */
+		ret = i2s_write(dev_i2s, tx_block, BLOCK_SIZE);
+		if (ret < 0) {
+			printf("Could not write TX buffer %d\n", tx_idx);
+			return ret;
+		}
 	}
 	/* Trigger the I2S transmission */
 	ret = i2s_trigger(dev_i2s, I2S_DIR_TX, I2S_TRIGGER_START);
@@ -120,8 +118,17 @@ int main(void)
 		return ret;
 	}
 
-	for (; tx_idx < NUM_BLOCKS; ) {
-		ret = i2s_write(dev_i2s, tx_block[tx_idx++], BLOCK_SIZE);
+	/* allocate, fill, write till the configured duration */
+	while (k_uptime_get() < CONFIG_SINE_WAVE_PLAYBACK_DURATION_MS) {
+		ret = k_mem_slab_alloc(&tx_0_mem_slab, &tx_block, K_FOREVER);
+		if (ret < 0) {
+			printf("Failed to allocate TX block\n");
+			return ret;
+		}
+		fill_buf((uint16_t *)tx_block, tx_idx % 3);
+		tx_idx++;
+
+		ret = i2s_write(dev_i2s, tx_block, BLOCK_SIZE);
 		if (ret < 0) {
 			printf("Could not write TX buffer %d\n", tx_idx);
 			return ret;

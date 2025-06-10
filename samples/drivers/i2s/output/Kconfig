@@ -5,3 +5,9 @@ source "Kconfig.zephyr"
 
 config I2C
 	default $(dt_compat_on_bus,$(DT_COMPAT_ADI_MAX9867),i2c)
+
+config SINE_WAVE_PLAYBACK_DURATION_MS
+	int "Sine wave playback duration (milliseconds)"
+	default 2000
+	help
+	  Duration of the sine wave playback in milliseconds.
