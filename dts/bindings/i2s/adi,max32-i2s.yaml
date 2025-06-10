@@ -1,0 +1,38 @@
+# Copyright (c) 2025 Croxel Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Analog Devices MAX3 series I2S controller
+
+compatible: "adi,max32-i2s"
+
+include: [i2s-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  dmas:
+    required: true
+    description: |
+      DMA channels for RX and TX. Two channels must be provided in the following order:
+      - RX DMA channel
+      - TX DMA channel
+
+  dma-names:
+    required: true
+    description: |
+      Names of DMA channels for RX and TX. Must be provided in the following order:
+      - rx
+      - tx
+
+  pinctrl-0:
+    required: true
+    description: |
+      GPIO pin configuration for I2S signals. The required signals are:
+      - I2S_WS (Word Select/Frame sync)
+      - I2S_SCK (Bit clock) 
+      - I2S_SDO (Serial data output)
+      - I2S_SDI (Serial data input)
+
+  pinctrl-names:
+    required: true
