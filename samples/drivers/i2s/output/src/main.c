@@ -8,6 +8,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/sys/iterable_sections.h>
+#include "codec.h"
 
 #define SAMPLE_NO 64
 
@@ -64,6 +65,12 @@ int main(void)
 	uint32_t tx_idx;
 	const struct device *dev_i2s = DEVICE_DT_GET(DT_ALIAS(i2s_tx));
 
+#if DT_ON_BUS(MAX9867_NODE, i2c)
+	if (!init_max9867_i2c()) {
+		return 0;
+	}
+#endif
+
 	if (!device_is_ready(dev_i2s)) {
 		printf("I2S device not ready\n");
 		return -ENODEV;
@@ -76,8 +83,11 @@ int main(void)
 	i2s_cfg.block_size = BLOCK_SIZE;
 	i2s_cfg.timeout = 2000;
 	/* Configure the Transmit port as Master */
-	i2s_cfg.options = I2S_OPT_FRAME_CLK_MASTER
-			| I2S_OPT_BIT_CLK_MASTER;
+#if CONFIG_BOARD_MAX32655FTHR_MAX32655_M4
+	i2s_cfg.options = I2S_OPT_BIT_CLK_SLAVE | I2S_OPT_FRAME_CLK_SLAVE;
+#else
+	i2s_cfg.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
+#endif
 	i2s_cfg.mem_slab = &tx_0_mem_slab;
 	ret = i2s_configure(dev_i2s, I2S_DIR_TX, &i2s_cfg);
 	if (ret < 0) {
