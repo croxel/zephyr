@@ -64,7 +64,8 @@ static int spi_mcux_dma_tx_load(const struct device *dev, const uint8_t *buf, si
 		stream->dma_cfg.channel_direction = MEMORY_TO_PERIPHERAL;
 	}
 
-	blk_cfg->dest_address = (uint32_t) &(base->TDR);
+	/* Dest is always LPSPI tx fifo */
+	blk_cfg->dest_address = LPSPI_GetTxRegisterAddress(base);
 
 	return dma_config(stream->dma_dev, stream->channel, &stream->dma_cfg);
 }
@@ -86,7 +87,7 @@ static int spi_mcux_dma_rx_load(const struct device *dev, uint8_t *buf, size_t l
 		blk_cfg->dest_address = (uint32_t)buf;
 	}
 
-	blk_cfg->source_address = (uint32_t) &(base->RDR);
+	blk_cfg->source_address = LPSPI_GetRxRegisterAddress(base);
 
 	return dma_config(stream->dma_dev, stream->channel, &stream->dma_cfg);
 }
@@ -179,10 +180,8 @@ static void spi_mcux_dma_callback(const struct device *dev, void *arg, uint32_t 
 		return;
 	}
 
-
-	while ((IS_ENABLED(CONFIG_SOC_FAMILY_NXP_IMXRT) ||
-		IS_ENABLED(CONFIG_SOC_FAMILY_KINETIS)) &&
-		(base->SR & LPSPI_SR_MBF_MASK)) {
+	while ((IS_ENABLED(CONFIG_SOC_FAMILY_NXP_IMXRT) || IS_ENABLED(CONFIG_SOC_FAMILY_KINETIS)) &&
+		(LPSPI_GetStatusFlags(base) & kLPSPI_ModuleBusyFlag)) {
 		/* wait until module is idle */
 	}
 
@@ -199,11 +198,11 @@ static void spi_mcux_dma_callback(const struct device *dev, void *arg, uint32_t 
 error:
 	LOG_ERR("DMA callback error with channel %d err %d.", channel, status);
 done:
-	base->DER &= ~(LPSPI_DER_TDDE_MASK | LPSPI_DER_RDDE_MASK);
+	LPSPI_DisableDMA(base, kLPSPI_TxDmaEnable | kLPSPI_RxDmaEnable);
 	base->TCR &= ~LPSPI_TCR_CONT_MASK;
 	lpspi_wait_tx_fifo_empty(spi_dev);
 	spi_context_cs_control(ctx, false);
-	base->CR |= LPSPI_CR_RTF_MASK | LPSPI_CR_RRF_MASK;
+	LPSPI_FlushFifo(base, true, true);
 	spi_context_complete(ctx, spi_dev, status);
 	spi_context_release(ctx, status);
 }
@@ -241,9 +240,9 @@ static int transceive_dma(const struct device *dev, const struct spi_config *spi
 
 	spi_context_cs_control(ctx, true);
 
-	base->CR |= LPSPI_CR_RTF_MASK | LPSPI_CR_RRF_MASK;
+	LPSPI_FlushFifo(base, true, true);
 
-	base->DER |= LPSPI_DER_TDDE_MASK | LPSPI_DER_RDDE_MASK;
+	LPSPI_EnableDMA(base, kLPSPI_TxDmaEnable | kLPSPI_RxDmaEnable);
 
 	ret = spi_context_wait_for_completion(ctx);
 	if (ret >= 0) {
