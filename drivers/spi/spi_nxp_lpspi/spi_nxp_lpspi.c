@@ -96,105 +96,68 @@ static inline void lpspi_handle_rx_irq(const struct device *dev)
 	}
 }
 
-/* constructs the next word from the buffer */
-static inline uint32_t lpspi_next_tx_word(const struct device *dev, const uint8_t *buf,
-					  int offset, size_t max_bytes)
+static inline uint32_t lpspi_next_tx_word(const struct device *dev, int offset)
 {
-	const uint8_t *byte = buf + offset;
+	struct lpspi_data *data = dev->data;
+	struct lpspi_driver_data *lpspi_data = (struct lpspi_driver_data *)data->driver_data;
+	struct spi_context *ctx = &data->ctx;
+	const uint8_t *byte = ctx->tx_buf + offset;
+	uint32_t num_bytes = MIN(lpspi_data->word_size_bytes, ctx->tx_len);
 	uint32_t next_word = 0;
 
-	for (uint8_t i = 0; i < max_bytes; i++) {
+	for (uint8_t i = 0; i < num_bytes; i++) {
 		next_word |= byte[i] << (BITS_PER_BYTE * i);
 	}
 
 	return next_word;
 }
 
-/* fills the TX fifo with specified amount of data from the specified buffer */
-static inline void lpspi_fill_tx_fifo(const struct device *dev, const uint8_t *buf,
-				      size_t buf_len, size_t fill_len)
+static inline void lpspi_fill_tx_fifo(const struct device *dev)
 {
 	LPSPI_Type *base = (LPSPI_Type *)DEVICE_MMIO_NAMED_GET(dev, reg_base);
 	struct lpspi_data *data = dev->data;
 	struct lpspi_driver_data *lpspi_data = (struct lpspi_driver_data *)data->driver_data;
-	uint8_t word_size = lpspi_data->word_size_bytes;
-	size_t buf_remaining_bytes = buf_len * word_size;
-	size_t offset = 0;
-	uint32_t next_word;
-	uint32_t next_word_bytes;
+	size_t bytes_in_xfer = lpspi_data->fill_len * lpspi_data->word_size_bytes;
+	size_t offset;
 
-	for (int word_count = 0; word_count < fill_len; word_count++) {
-		next_word_bytes = MIN(word_size, buf_remaining_bytes);
-		next_word = lpspi_next_tx_word(dev, buf, offset, next_word_bytes);
-		base->TDR = next_word;
-		offset += word_size;
-		buf_remaining_bytes -= word_size;
+	for (offset = 0; offset < bytes_in_xfer; offset += lpspi_data->word_size_bytes) {
+		base->TDR = lpspi_next_tx_word(dev, offset);
 	}
 
 	LOG_DBG("Filled TX FIFO to %d words (%d bytes)", lpspi_data->fill_len, offset);
 }
 
-/* just fills TX fifo with the specified amount of NOPS */
-static void lpspi_fill_tx_fifo_nop(const struct device *dev, size_t fill_len)
+static void lpspi_fill_tx_fifo_nop(const struct device *dev)
 {
 	LPSPI_Type *base = (LPSPI_Type *)DEVICE_MMIO_NAMED_GET(dev, reg_base);
+	struct lpspi_data *data = dev->data;
+	struct lpspi_driver_data *lpspi_data = (struct lpspi_driver_data *)data->driver_data;
 
-	for (int i = 0; i < fill_len; i++) {
+	for (int i = 0; i < lpspi_data->fill_len; i++) {
 		base->TDR = 0;
 	}
 
-	LOG_DBG("Filled TX fifo with %d NOPs", fill_len);
+	LOG_DBG("Filled TX fifo with %d NOPs", lpspi_data->fill_len);
 }
 
-/* handles refilling the TX fifo from empty */
 static void lpspi_next_tx_fill(const struct device *dev)
 {
 	const struct lpspi_config *config = dev->config;
 	struct lpspi_data *data = dev->data;
 	struct lpspi_driver_data *lpspi_data = (struct lpspi_driver_data *)data->driver_data;
 	struct spi_context *ctx = &data->ctx;
-	size_t fill_len;
-	size_t actual_filled = 0;
+	size_t max_chunk;
 
 	/* Convert bytes to words for this xfer */
-	fill_len = DIV_ROUND_UP(spi_context_tx_len_left(ctx), lpspi_data->word_size_bytes);
-	fill_len = MIN(fill_len, config->tx_fifo_size);
+	max_chunk = DIV_ROUND_UP(ctx->tx_len, lpspi_data->word_size_bytes);
+	max_chunk = MIN(max_chunk, config->tx_fifo_size);
+	lpspi_data->fill_len = max_chunk;
 
-	const struct spi_buf *current_buf = ctx->current_tx;
-	const uint8_t *cur_buf_pos = ctx->tx_buf;
-	size_t cur_buf_len_left = ctx->tx_len;
-	size_t bufs_left = ctx->tx_count;
-
-	while (fill_len > 0) {
-		size_t next_buf_fill = MIN(cur_buf_len_left, fill_len);
-
-		if (cur_buf_pos == NULL) {
-			lpspi_fill_tx_fifo_nop(dev, next_buf_fill);
-		} else {
-			lpspi_fill_tx_fifo(dev, cur_buf_pos,
-						current_buf->len, next_buf_fill);
-		}
-
-		fill_len -= next_buf_fill;
-		cur_buf_pos += next_buf_fill;
-
-		/* in the case where we just filled as much as we could from the current buffer,
-		 * this logic while wrong should have no effect, since fill_len will be 0,
-		 * so I choose not to make the code extra complex
-		 */
-		bufs_left--;
-		if (bufs_left > 0) {
-			current_buf += 1;
-			cur_buf_len_left = current_buf->len;
-			cur_buf_pos = current_buf->buf;
-		} else {
-			fill_len = 0;
-		}
-
-		actual_filled += next_buf_fill;
+	if (spi_context_tx_buf_on(ctx)) {
+		lpspi_fill_tx_fifo(dev);
+	} else {
+		lpspi_fill_tx_fifo_nop(dev);
 	}
-
-	lpspi_data->fill_len = actual_filled;
 }
 
 static inline void lpspi_handle_tx_irq(const struct device *dev)
@@ -204,12 +167,7 @@ static inline void lpspi_handle_tx_irq(const struct device *dev)
 	struct lpspi_driver_data *lpspi_data = (struct lpspi_driver_data *)data->driver_data;
 	struct spi_context *ctx = &data->ctx;
 
-	while (spi_context_tx_on(ctx) && lpspi_data->fill_len > 0) {
-		size_t this_buf_words_sent = MIN(lpspi_data->fill_len, ctx->tx_len);
-
-		spi_context_update_tx(ctx, lpspi_data->word_size_bytes, this_buf_words_sent);
-		lpspi_data->fill_len -= this_buf_words_sent;
-	}
+	spi_context_update_tx(ctx, lpspi_data->word_size_bytes, lpspi_data->fill_len);
 
 	base->SR = LPSPI_SR_TDF_MASK;
 
@@ -248,11 +206,10 @@ static void lpspi_isr(const struct device *dev)
 		size_t max_fill = MIN(expected_rx_left, config->rx_fifo_size);
 		size_t tx_current_fifo_len = tx_fifo_cur_len(base);
 
-		size_t fill_len = tx_current_fifo_len < ctx->rx_len ?
+		lpspi_data->fill_len = tx_current_fifo_len < ctx->rx_len ?
 					max_fill - tx_current_fifo_len : 0;
 
-		lpspi_fill_tx_fifo_nop(dev, fill_len);
-		lpspi_data->fill_len = fill_len;
+		lpspi_fill_tx_fifo_nop(dev);
 	}
 
 	if (spi_context_rx_len_left(ctx) == 1) {
