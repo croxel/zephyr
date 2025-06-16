@@ -41,7 +41,12 @@ static void icm45686_thread_cb(const struct device *dev)
 
 	(void)k_mutex_lock(&data->triggers.lock, K_FOREVER);
 
-	if (data->triggers.entry.handler) {
+	int err;
+	uint8_t status;
+
+	err = icm45686_bus_read(dev, REG_INT1_STATUS0 | REG_READ_BIT, &status, 1);
+
+	if (!err && (status & REG_INT1_STATUS0_DRDY(1)) && data->triggers.entry.handler) {
 		data->triggers.entry.handler(dev, &data->triggers.entry.trigger);
 	}
 
