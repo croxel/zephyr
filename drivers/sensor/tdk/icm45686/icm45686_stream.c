@@ -369,8 +369,10 @@ static void icm45686_event_handler(const struct device *dev)
 	/** Prepare an asynchronous read of the INT status register */
 	struct rtio_sqe *write_sqe = rtio_sqe_acquire(data->rtio.ctx);
 	struct rtio_sqe *read_sqe = rtio_sqe_acquire(data->rtio.ctx);
+#if false
 	struct rtio_sqe *write_fifo_ct_sqe = rtio_sqe_acquire(data->rtio.ctx);
 	struct rtio_sqe *read_fifo_ct_sqe = rtio_sqe_acquire(data->rtio.ctx);
+#endif
 	struct rtio_sqe *complete_sqe = rtio_sqe_acquire(data->rtio.ctx);
 
 	if (!write_sqe || !read_sqe || !complete_sqe) {
@@ -407,6 +409,7 @@ static void icm45686_event_handler(const struct device *dev)
 	read_sqe->flags |= RTIO_SQE_CHAINED;
 
 
+#if false
 	/** Preemptively read FIFO count so we can decide on the next callback
 	 * how much FIFO data we'd read (if needed).
 	 */
@@ -431,6 +434,7 @@ static void icm45686_event_handler(const struct device *dev)
 		read_fifo_ct_sqe->iodev_flags |= RTIO_IODEV_I3C_STOP | RTIO_IODEV_I3C_RESTART;
 	}
 	read_fifo_ct_sqe->flags |= RTIO_SQE_CHAINED;
+#endif
 
 	rtio_sqe_prep_callback_no_cqe(complete_sqe,
 				      icm45686_handle_event_actions,
