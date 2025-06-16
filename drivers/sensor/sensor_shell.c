@@ -351,6 +351,7 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 		if (!decoder->has_trigger(buf, trigger)) {
 			continue;
 		}
+		return;
 		shell_info(ctx->sh, "Trigger (%d / %s) detected", trigger,
 			   (sensor_trigger_table[trigger].name == NULL
 				    ? "UNKNOWN"
