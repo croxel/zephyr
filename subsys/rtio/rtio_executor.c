@@ -127,7 +127,7 @@ void rtio_executor_submit(struct rtio *r)
  * @param[in] is_canceled Whether or not the SQE is canceled
  */
 static inline void rtio_executor_handle_multishot(struct rtio *r, struct rtio_iodev_sqe *curr,
-						  bool is_canceled)
+						  bool is_canceled, int result)
 {
 	/* Reset the mempool if needed */
 	if (curr->sqe.op == RTIO_OP_RX && FIELD_GET(RTIO_SQE_MEMPOOL_BUFFER, curr->sqe.flags)) {
@@ -144,7 +144,9 @@ static inline void rtio_executor_handle_multishot(struct rtio *r, struct rtio_io
 	if (!is_canceled) {
 		/* Request was not canceled, put the SQE back in the queue */
 		mpsc_push(&r->sq, &curr->q);
-		rtio_executor_submit(r);
+		if (result >= 0) {
+			rtio_executor_submit(r);
+		}
 	}
 }
 
@@ -164,11 +166,14 @@ static inline void rtio_executor_done(struct rtio_iodev_sqe *iodev_sqe, int resu
 
 		next = rtio_iodev_sqe_next(curr);
 		if (is_multishot) {
-			rtio_executor_handle_multishot(r, curr, is_canceled);
+			rtio_executor_handle_multishot(r, curr, is_canceled, result);
 		}
 		if (!is_multishot || is_canceled) {
 			/* SQE is no longer needed, release it */
 			rtio_sqe_pool_free(r->sqe_pool, curr);
+		}
+		if (is_multishot && (result < 0)) {
+			cqe_flags |= RTIO_CQE_FLAG_MULTISHOT_STOPPED;
 		}
 		if (!is_canceled && FIELD_GET(RTIO_SQE_NO_RESPONSE, sqe_flags) == 0) {
 			/* Request was not canceled, generate a CQE */

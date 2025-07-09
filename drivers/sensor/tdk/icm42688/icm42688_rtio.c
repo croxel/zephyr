@@ -76,7 +76,7 @@ static void icm42688_submit_one_shot(const struct device *dev, struct rtio_iodev
 	rc = icm42688_rtio_sample_fetch(dev, edata->readings);
 	/* Check that the fetch succeeded */
 	if (rc != 0) {
-		LOG_ERR("Failed to fetch samples");
+		LOG_ERR("Failed to fetch samples: %d", rc);
 		rtio_iodev_sqe_err(iodev_sqe, rc);
 		return;
 	}

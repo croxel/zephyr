@@ -13,6 +13,8 @@
 #include "sensor_shell.h"
 
 /* Create a single common config for streaming */
+static struct sensor_shell_processing_context ctx;
+static struct rtio_sqe *current_streaming_handle;
 static struct sensor_stream_trigger iodev_sensor_shell_trigger;
 static struct sensor_read_config iodev_sensor_shell_stream_config = {
 	.sensor = NULL,
@@ -31,8 +33,35 @@ static void sensor_shell_processing_entry_point(void *a, void *b, void *c)
 	ARG_UNUSED(c);
 
 	while (true) {
-		sensor_processing_with_callback(&sensor_read_rtio,
-						sensor_shell_processing_callback);
+		struct rtio_cqe *cqe = rtio_cqe_consume_block(&sensor_read_rtio);
+		if (!cqe) {
+			continue;
+		}
+
+		int result = cqe->result;
+		void *userdata = cqe->userdata;
+		uint8_t *buf = NULL;
+		uint32_t buf_len = 0;
+
+		rtio_cqe_get_mempool_buffer(&sensor_read_rtio, cqe, &buf, &buf_len);
+
+		sensor_shell_processing_callback(result, buf, buf_len, userdata);
+
+		rtio_release_buffer(&sensor_read_rtio, buf, buf_len);
+
+		if (cqe->flags | RTIO_CQE_FLAG_MULTISHOT_STOPPED) {
+			rtio_sqe_cancel(current_streaming_handle);
+
+			int rc = sensor_stream(&iodev_sensor_shell_stream, &sensor_read_rtio, &ctx,
+					&current_streaming_handle);
+
+			if (rc != 0) {
+				shell_error(ctx.sh, "Failed to restart stream: %d", rc);
+			} else {
+				shell_info(ctx.sh, "Restarted stream");
+			}
+		}
+		rtio_cqe_release(&sensor_read_rtio, cqe);
 	}
 }
 K_THREAD_DEFINE(sensor_shell_processing_tid, CONFIG_SENSOR_SHELL_THREAD_STACK_SIZE,
@@ -40,8 +69,6 @@ K_THREAD_DEFINE(sensor_shell_processing_tid, CONFIG_SENSOR_SHELL_THREAD_STACK_SI
 
 int cmd_sensor_stream(const struct shell *sh, size_t argc, char *argv[])
 {
-	static struct rtio_sqe *current_streaming_handle;
-	static struct sensor_shell_processing_context ctx;
 	const struct device *dev = device_get_binding(argv[1]);
 
 	if (argc != 5 && argc != 3) {

@@ -6,6 +6,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/sys/check.h>
 #include "icm42688.h"
 #include "icm42688_decoder.h"
 #include "icm42688_reg.h"
@@ -154,12 +155,15 @@ static void icm42688_fifo_count_cb(struct rtio *r, const struct rtio_sqe *sqe, v
 	 * result
 	 */
 	struct rtio_sqe *write_fifo_addr = rtio_sqe_acquire(r);
-	__ASSERT_NO_MSG(write_fifo_addr != NULL);
 	struct rtio_sqe *read_fifo_data = rtio_sqe_acquire(r);
-	__ASSERT_NO_MSG(read_fifo_data != NULL);
 	struct rtio_sqe *complete_op = rtio_sqe_acquire(r);
-	__ASSERT_NO_MSG(complete_op != NULL);
 	const uint8_t reg_addr = REG_SPI_READ_BIT | FIELD_GET(REG_ADDRESS_MASK, REG_FIFO_DATA);
+
+	CHECKIF(!write_fifo_addr || !read_fifo_data || !complete_op) {
+		rtio_sqe_drop_all(r);
+		rtio_iodev_sqe_err(iodev_sqe, -ENOMEM);
+		return;
+	}
 
 	rtio_sqe_prep_tiny_write(write_fifo_addr, spi_iodev, RTIO_PRIO_NORM, &reg_addr, 1, NULL);
 	write_fifo_addr->flags = RTIO_SQE_TRANSACTION;
@@ -272,6 +276,11 @@ static void icm42688_int_status_cb(struct rtio *r, const struct rtio_sqe *sqr, v
 				BIT_FIFO_FLUSH,
 			};
 
+			CHECKIF(!write_signal_path_reset) {
+				rtio_sqe_drop_all(r);
+				return;
+			}
+
 			rtio_sqe_prep_tiny_write(write_signal_path_reset, spi_iodev, RTIO_PRIO_NORM,
 						 write_buffer, ARRAY_SIZE(write_buffer), NULL);
 			/* TODO Add a new flag for fire-and-forget so we don't have to block here */
@@ -285,6 +294,13 @@ static void icm42688_int_status_cb(struct rtio *r, const struct rtio_sqe *sqr, v
 	struct rtio_sqe *write_fifo_count_reg = rtio_sqe_acquire(r);
 	struct rtio_sqe *read_fifo_count = rtio_sqe_acquire(r);
 	struct rtio_sqe *check_fifo_count = rtio_sqe_acquire(r);
+
+	CHECKIF(!write_fifo_count_reg || !read_fifo_count || !check_fifo_count) {
+		rtio_sqe_drop_all(r);
+		rtio_iodev_sqe_err(streaming_sqe, -ENOMEM);
+		return;
+	}
+
 	uint8_t reg = REG_SPI_READ_BIT | FIELD_GET(REG_ADDRESS_MASK, REG_FIFO_COUNTH);
 	uint8_t *read_buf = (uint8_t *)&drv_data->fifo_count;
 
@@ -301,6 +317,7 @@ void icm42688_fifo_event(const struct device *dev)
 {
 	struct icm42688_dev_data *drv_data = dev->data;
 	struct rtio_iodev *spi_iodev = drv_data->spi_iodev;
+	struct rtio_iodev_sqe *iodev_sqe = drv_data->streaming_sqe;
 	struct rtio *r = drv_data->r;
 	uint64_t cycles;
 	int rc;
@@ -331,6 +348,12 @@ void icm42688_fifo_event(const struct device *dev)
 	struct rtio_sqe *read_int_reg = rtio_sqe_acquire(r);
 	struct rtio_sqe *check_int_status = rtio_sqe_acquire(r);
 	uint8_t reg = REG_SPI_READ_BIT | FIELD_GET(REG_ADDRESS_MASK, REG_INT_STATUS);
+
+	CHECKIF(!write_int_reg || !read_int_reg || !check_int_status) {
+		rtio_sqe_drop_all(r);
+		rtio_iodev_sqe_err(iodev_sqe, -ENOMEM);
+		return;
+	}
 
 	rtio_sqe_prep_tiny_write(write_int_reg, spi_iodev, RTIO_PRIO_NORM, &reg, 1, NULL);
 	write_int_reg->flags = RTIO_SQE_TRANSACTION;
