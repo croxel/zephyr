@@ -67,6 +67,7 @@ void rtio_executor_submit(struct rtio *r)
 {
 	const uint16_t cancel_no_response = (RTIO_SQE_CANCELED | RTIO_SQE_NO_RESPONSE);
 	struct mpsc_node *node = mpsc_pop(&r->sq);
+	struct mpsc blocked_items = MPSC_INIT(blocked_items);
 
 	while (node != NULL) {
 		struct rtio_iodev_sqe *iodev_sqe = CONTAINER_OF(node, struct rtio_iodev_sqe, q);
@@ -113,10 +114,26 @@ void rtio_executor_submit(struct rtio *r)
 		curr->next = NULL;
 		curr->r = r;
 
-		rtio_iodev_submit(iodev_sqe);
+		/** Prevent resubmitting blocked multi-shot items, as they need
+		 * to be either unblocked or cancelled before reprocessing.
+		 */
+		if (iodev_sqe->sqe.flags & RTIO_SQE_MULTISHOT_BLOCKED) {
+			mpsc_push(&blocked_items, &iodev_sqe->q);
+		} else {
+			rtio_iodev_submit(iodev_sqe);
+		}
 
 		node = mpsc_pop(&r->sq);
 	}
+
+	/** Blocked items need to be put back in the queue in order to be cancellable
+	 * through @ref rtio_sqe_drop_all.
+	 */
+	node = mpsc_pop(&blocked_items);
+	while (node != NULL) {
+		mpsc_push(&r->sq, node);
+		node = mpsc_pop(&blocked_items);
+	};
 }
 
 /**
@@ -125,9 +142,12 @@ void rtio_executor_submit(struct rtio *r)
  * @param[in] r RTIO context
  * @param[in] curr Current IODev SQE that's being marked for finished.
  * @param[in] is_canceled Whether or not the SQE is canceled
+ * @param[in] result Result of the SQE operation
+ *
+ * @retval True if it was resubmitted, False if it was blocked.
  */
-static inline void rtio_executor_handle_multishot(struct rtio *r, struct rtio_iodev_sqe *curr,
-						  bool is_canceled)
+static inline bool rtio_executor_handle_multishot(struct rtio *r, struct rtio_iodev_sqe *curr,
+						  bool is_canceled, int result)
 {
 	/* Reset the mempool if needed */
 	if (curr->sqe.op == RTIO_OP_RX && FIELD_GET(RTIO_SQE_MEMPOOL_BUFFER, curr->sqe.flags)) {
@@ -141,11 +161,29 @@ static inline void rtio_executor_handle_multishot(struct rtio *r, struct rtio_io
 		curr->sqe.rx.buf = NULL;
 		curr->sqe.rx.buf_len = 0;
 	}
+
+	if (result < 0) {
+		/** If there was an error during the processing of the operation,
+		 * mark the SQE as blocked. The application will either unblock
+		 * it or cancel it and re-submit it altogether.
+		 */
+		curr->sqe.flags |= RTIO_SQE_MULTISHOT_BLOCKED;
+	}
+
 	if (!is_canceled) {
+		const bool is_blocked = FIELD_GET(RTIO_SQE_MULTISHOT_BLOCKED, curr->sqe.flags) == 1;
+
 		/* Request was not canceled, put the SQE back in the queue */
 		mpsc_push(&r->sq, &curr->q);
-		rtio_executor_submit(r);
+
+		/* Don't create unnecessary overhead if the operation is blocked */
+		if (!is_blocked) {
+			rtio_executor_submit(r);
+			return true;
+		}
 	}
+
+	return false;
 }
 
 static inline void rtio_executor_done(struct rtio_iodev_sqe *iodev_sqe, int result, bool is_ok)
@@ -164,7 +202,10 @@ static inline void rtio_executor_done(struct rtio_iodev_sqe *iodev_sqe, int resu
 
 		next = rtio_iodev_sqe_next(curr);
 		if (is_multishot) {
-			rtio_executor_handle_multishot(r, curr, is_canceled);
+			if (!rtio_executor_handle_multishot(r, curr, is_canceled, result)) {
+				/* The submission hereby is held blocked, inform the consumer */
+				cqe_flags |= RTIO_CQE_FLAG_MULTISHOT_BLOCKED;
+			}
 		}
 		if (!is_multishot || is_canceled) {
 			/* SQE is no longer needed, release it */

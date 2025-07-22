@@ -129,17 +129,23 @@ extern "C" {
 #define RTIO_SQE_CANCELED BIT(3)
 
 /**
- * @brief The SQE should continue producing CQEs until canceled
+ * @brief The SQE should continue producing CQEs until canceled or blocked
  *
  * This flag must exist along @ref RTIO_SQE_MEMPOOL_BUFFER and signals that when a read is
- * complete. It should be placed back in queue until canceled.
+ * complete. It should be placed back in queue until canceled, unless is flagged as blocked.
  */
 #define RTIO_SQE_MULTISHOT BIT(4)
 
 /**
+ * @brief The Multi-shot SQE will not continue to produce CQEs, in order to signal of an
+ * unexpected outcome that should be handled by the client.
+ */
+#define RTIO_SQE_MULTISHOT_BLOCKED BIT(5)
+
+/**
  * @brief The SQE does not produce a CQE.
  */
-#define RTIO_SQE_NO_RESPONSE BIT(5)
+#define RTIO_SQE_NO_RESPONSE BIT(6)
 
 /**
  * @}
@@ -159,6 +165,15 @@ extern "C" {
  * soon as the application is done with it.
  */
 #define RTIO_CQE_FLAG_MEMPOOL_BUFFER BIT(0)
+
+/**
+ * @brief The multishot submission has been blocked by the executor.
+ *
+ * This bit signals the multishot submission has been blocked, due to an error during execution.
+ * The expectation is that the client will handle the error, either by re-introducing the multi
+ * shot submission, restarting the system or performing other application-specific actions.
+ */
+#define RTIO_CQE_FLAG_MULTISHOT_BLOCKED BIT(1)
 
 #define RTIO_CQE_FLAG_GET(flags) FIELD_GET(GENMASK(7, 0), (flags))
 
@@ -1199,9 +1214,10 @@ static inline uint32_t rtio_cqe_compute_flags(struct rtio_iodev_sqe *iodev_sqe)
 		}
 		flags = RTIO_CQE_FLAG_PREP_MEMPOOL(blk_index, blk_count);
 	}
-#else
-	ARG_UNUSED(iodev_sqe);
 #endif
+	if (FIELD_GET(RTIO_SQE_MULTISHOT_BLOCKED, iodev_sqe->sqe.flags) == 1) {
+		flags |= RTIO_CQE_FLAG_MULTISHOT_BLOCKED;
+	}
 
 	return flags;
 }
@@ -1457,6 +1473,21 @@ static inline int z_impl_rtio_sqe_cancel(struct rtio_sqe *sqe)
 	} while (iodev_sqe != NULL);
 
 	return 0;
+}
+
+/**
+ * @brief Unblock a multi-shot SQE
+ *
+ * Multi-shot SQEs get blocked as a mechanism to allow error handling to occur by the client.
+ * By unblocking the SQE, it will be eligible for execution on the next @ref rtio_submit.
+ *
+ * @param[in] sqe The SQE to unblock
+ */
+__syscall void rtio_sqe_unblock(struct rtio_sqe *sqe);
+
+static inline void z_impl_rtio_sqe_unblock(struct rtio_sqe *sqe)
+{
+	sqe->flags &= ~RTIO_SQE_MULTISHOT_BLOCKED;
 }
 
 /**
