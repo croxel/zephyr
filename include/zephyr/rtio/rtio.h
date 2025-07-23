@@ -1325,6 +1325,9 @@ static inline void rtio_cqe_submit(struct rtio *r, int result, void *userdata, u
 		cqe->userdata = userdata;
 		cqe->flags = flags;
 		rtio_cqe_produce(r, cqe);
+#ifdef CONFIG_RTIO_CONSUME_SEM
+		k_sem_give(r->consume_sem);
+#endif
 	}
 
 	/* atomic_t isn't guaranteed to wrap correctly as it could be signed, so
@@ -1344,9 +1347,6 @@ static inline void rtio_cqe_submit(struct rtio *r, int result, void *userdata, u
 			k_sem_give(r->submit_sem);
 		}
 	}
-#endif
-#ifdef CONFIG_RTIO_CONSUME_SEM
-	k_sem_give(r->consume_sem);
 #endif
 }
 
