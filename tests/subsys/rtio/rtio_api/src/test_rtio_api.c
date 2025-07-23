@@ -532,6 +532,75 @@ ZTEST_USER(rtio_api, test_rtio_multishot)
 	}
 }
 
+static inline void test_rtio_multishot_error_handling_(struct rtio *r, int idx)
+{
+	int res;
+	struct rtio_sqe sqe;
+	struct rtio_cqe cqe;
+	struct rtio_sqe *handle;
+	uint8_t *buffer = NULL;
+	uint32_t buffer_len = 0;
+
+	for (int i = 0; i < MEM_BLK_SIZE; ++i) {
+		mempool_data[i] = i + idx;
+	}
+
+	rtio_sqe_prep_read_multishot(&sqe, (struct rtio_iodev *)&iodev_test_simple, 0,
+				     mempool_data);
+
+	res = rtio_sqe_copy_in_get_handles(r, &sqe, &handle, 1);
+	zassert_ok(res);
+
+	res = rtio_submit(r, 1);
+	zassert_ok(res, "Should return ok from rtio_execute");
+
+	zassert_equal(1, rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(100)));
+	zassert_ok(cqe.result, "Result should be ok but got %d", cqe.result);
+	zassert_false(cqe.flags & RTIO_CQE_FLAG_MULTISHOT_BLOCKED, "CQE is blocked");
+	zassert_false(handle->flags & RTIO_SQE_MULTISHOT_BLOCKED, "SQE is blocked");
+	rtio_cqe_get_mempool_buffer(r, &cqe, &buffer, &buffer_len);
+	rtio_release_buffer(r, buffer, buffer_len);
+
+	/** It should be marked as blocked on the next shot */
+	rtio_iodev_test_set_result(&iodev_test_simple, -EIO);
+
+	zassert_equal(1, rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(100)));
+	zassert_equal(cqe.result, -EIO, "Result should be -EIO but got %d", cqe.result);
+	zassert_true(cqe.flags & RTIO_CQE_FLAG_MULTISHOT_BLOCKED, "CQE should be blocked");
+	zassert_true(handle->flags & RTIO_SQE_MULTISHOT_BLOCKED, "SQE should be blocked");
+	rtio_cqe_get_mempool_buffer(r, &cqe, &buffer, &buffer_len);
+	rtio_release_buffer(r, buffer, buffer_len);
+
+	zassert_equal(0, rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(100)), "Should not have CQEs");
+
+	/** Now it should resume the submissions */
+	rtio_iodev_test_set_result(&iodev_test_simple, 0);
+	rtio_sqe_unblock(handle);
+	res = rtio_submit(r, 1);
+	zassert_ok(res, "Should return ok from rtio_execute");
+
+	zassert_equal(1, rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(100)));
+	zassert_ok(cqe.result, "Result should be ok but got %d", cqe.result);
+	zassert_false(cqe.flags & RTIO_CQE_FLAG_MULTISHOT_BLOCKED, "CQE is blocked");
+	zassert_false(handle->flags & RTIO_SQE_MULTISHOT_BLOCKED, "SQE is blocked");
+	rtio_cqe_get_mempool_buffer(r, &cqe, &buffer, &buffer_len);
+	rtio_release_buffer(r, buffer, buffer_len);
+
+	rtio_sqe_cancel(handle);
+	/* Flush any pending CQEs */
+	while (rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(15)) != 0) {
+		rtio_cqe_get_mempool_buffer(r, &cqe, &buffer, &buffer_len);
+		rtio_release_buffer(r, buffer, buffer_len);
+	}
+}
+
+ZTEST_USER(rtio_api, test_rtio_multishot_error_handling)
+{
+	for (int i = 0; i < TEST_REPEATS; i++) {
+		test_rtio_multishot_error_handling_(&r_simple, 0);
+	}
+}
+
 RTIO_DEFINE(r_transaction, SQE_POOL_SIZE, CQE_POOL_SIZE);
 
 RTIO_IODEV_TEST_DEFINE(iodev_test_transaction0);
@@ -937,6 +1006,7 @@ static void rtio_api_before(void *a)
 
 		while (rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(15))) {
 		}
+		rtio_sqe_drop_all(r);
 	}
 
 	rtio_iodev_test_init(&iodev_test_simple);
