@@ -291,6 +291,7 @@ void sensor_processing_with_callback(struct rtio *ctx, sensor_processing_callbac
 	void *userdata = NULL;
 	uint8_t *buf = NULL;
 	uint32_t buf_len = 0;
+	uint32_t flags;
 	int rc;
 
 	/* Wait for a CQE */
@@ -299,6 +300,7 @@ void sensor_processing_with_callback(struct rtio *ctx, sensor_processing_callbac
 	/* Cache the data from the CQE */
 	rc = cqe->result;
 	userdata = cqe->userdata;
+	flags = cqe->flags;
 	rtio_cqe_get_mempool_buffer(ctx, cqe, &buf, &buf_len);
 
 	/* Release the CQE */
@@ -309,6 +311,11 @@ void sensor_processing_with_callback(struct rtio *ctx, sensor_processing_callbac
 
 	/* Release the memory */
 	rtio_release_buffer(ctx, buf, buf_len);
+
+	/** Cancel all pending submissions (including multi-shot) if there was an error */
+	if (FIELD_GET(RTIO_CQE_FLAG_MULTISHOT_BLOCKED, flags) == 1) {
+		rtio_sqe_drop_all(ctx);
+	}
 }
 
 /**
