@@ -1357,6 +1357,8 @@ flagged.
         "IAR_LIBCPP",
         "IAR_SEMIHOSTING",
         "IAR_ZEPHYR_INIT",
+        "IPC_RADIO_BT",  # Used in IPC_radio bt
+        "IPC_RADIO_BT_HCI_IPC",  # Used in IPC_radio bt over hci
         "IPC_SERVICE_ICMSG_BOND_NOTIFY_REPEAT_TO_MS", # Used in ICMsg tests for intercompatibility
                                                       # with older versions of the ICMsg.
         "LIBGCC_RTLIB",
