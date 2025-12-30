@@ -1,0 +1,27 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_CROXEL_CX1827
+	select SOC_NRF54H20_CPUAPP if BOARD_CROXEL_CX1827_NRF54H20_CPUAPP
+	select SOC_NRF54H20_CPURAD if BOARD_CROXEL_CX1827_NRF54H20_CPURAD
+	select SOC_NRF54H20_CPUPPR if (BOARD_CROXEL_CX1827_NRF54H20_CPUPPR || \
+				       BOARD_CROXEL_CX1827_NRF54H20_CPUPPR_XIP)
+	select SOC_NRF54H20_CPUFLPR if (BOARD_CROXEL_CX1827_NRF54H20_CPUFLPR || \
+				        BOARD_CROXEL_CX1827_NRF54H20_CPUFLPR_XIP)
+
+config USBD_NEXT_INIT_ON_BOOT
+	bool "Initialize USB Device Next stack on boot"
+
+if USBD_NEXT_INIT_ON_BOOT
+
+# Source common USB sample options used to initialize new experimental USB
+# device stack. The scope of these options is limited to USB samples in project
+# tree, you cannot use them in your own application.
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+config USBD_NEXT_INIT_ON_BOOT_WRAPPER
+	bool
+	default y
+	select USB_DEVICE_STACK_NEXT
+
+endif

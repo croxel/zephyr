@@ -1,0 +1,18 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: croxel_cx1827/nrf54h20/cpuflpr
+name: Croxel-CX1827-nRF54H20-FLPR
+type: mcu
+arch: riscv
+toolchain:
+  - zephyr
+sysbuild: true
+ram: 46
+flash: 46
+supported:
+  - counter
+  - gpio
+  - i2c
+  - pwm
+  - spi

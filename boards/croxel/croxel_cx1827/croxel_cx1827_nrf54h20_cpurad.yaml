@@ -1,0 +1,19 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: croxel_cx1827/nrf54h20/cpurad
+name: Croxel-CX1827-nRF54H20-Radio
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - zephyr
+sysbuild: true
+ram: 192
+flash: 328
+supported:
+  - counter
+  - gpio
+  - pwm
+  - retained_mem
+  - spi
