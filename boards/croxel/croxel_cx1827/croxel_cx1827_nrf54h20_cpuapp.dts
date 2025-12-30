@@ -1,0 +1,512 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <nordic/nrf54h20_cpuapp.dtsi>
+#include "croxel_cx1827_nrf54h20-common.dtsi"
+
+/delete-node/ &cpurad_cpusys_ipc;
+/delete-node/ &cpusec_cpurad_ipc;
+
+/ {
+	compatible = "croxel,cx1827-nrf54h20-cpuapp";
+	model = "Croxel CX1827 nRF54H20 Application MCU";
+
+	chosen {
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,code-partition = &cpuapp_slot0_partition;
+		zephyr,flash = &mram1x;
+		zephyr,sram = &cpuapp_data;
+		zephyr,shell-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart0;
+		zephyr,ieee802154 = &cpuapp_ieee802154;
+		zephyr,bt-hci = &bt_hci_ipc0;
+		nordic,802154-spinel-ipc = &ipc0;
+		zephyr,canbus = &can120;
+		zephyr,entropy = &psa_rng;
+	};
+
+	aliases {
+		buzzer = &buzzer;
+		can-stb = &can_stb;
+		led0 = &led0;
+		led1 = &led1;
+		led2 = &led2;
+		resetinfo = &cpuapp_resetinfo;
+		sw0 = &button0;
+		sw1 = &button1;
+		ipc-to-cpusys = &cpuapp_cpusys_ipc;
+		watchdog0 = &wdt010;
+		mcuboot-button0 = &button0;
+		mcuboot-led0 = &led0;
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = <&gpio1 3 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button 0";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+
+		button1: button_1 {
+			gpios = <&gpio1 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button 1";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led0: led_0 {
+			gpios = <&gpio7 1 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 0";
+		};
+
+		led1: led_1 {
+			gpios = <&gpio7 6 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 1";
+		};
+
+		led2: led_2 {
+			gpios = <&gpio7 7 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 2";
+		};
+
+		can_stb: can_stb {
+			gpios = <&gpio7 3 GPIO_ACTIVE_LOW>;
+			label = "CAN Standby";
+		};
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+
+		buzzer: buzzer {
+			pwms = <&pwm120 0 PWM_HZ(4000) PWM_POLARITY_NORMAL>;
+		};
+	};
+
+	psa_rng: psa-rng {
+		compatible = "zephyr,psa-crypto-rng";
+		status = "okay";
+	};
+};
+
+&cpuapp_bellboard {
+	status = "okay";
+	interrupts = <96 NRF_DEFAULT_IRQ_PRIORITY>;
+	interrupt-names = "irq0";
+	/* irq0:
+	 *  - 0:  cpuapp-cpusec
+	 *  - 6:  cpuapp-cpusys
+	 *  - 13: cpuapp-cpuppr
+	 *  - 14: cpuapp-cpuflpr
+	 *  - 18: cpuapp-cpurad
+	 */
+	nordic,interrupt-mapping = <0x00046041 0>;
+};
+
+&cpurad_bellboard {
+	status = "okay";
+};
+
+&cpusys_vevif {
+	status = "okay";
+};
+
+&cpusec_cpuapp_ipc {
+	status = "okay";
+	mbox-names = "tx", "rx";
+};
+
+&cpusec_bellboard {
+	status = "okay";
+};
+
+ipc0: &cpuapp_cpurad_ipc {
+	status = "okay";
+	mbox-names = "rx", "tx";
+	tx-region = <&cpuapp_cpurad_ipc_shm>;
+	rx-region = <&cpurad_cpuapp_ipc_shm>;
+	tx-blocks = <32>;
+	rx-blocks = <32>;
+
+	bt_hci_ipc0: bt_hci_ipc0 {
+		compatible = "zephyr,bt-hci-ipc";
+		status = "okay";
+	};
+};
+
+&cpuapp_cpusys_ipc {
+	status = "okay";
+	mbox-names = "rx", "tx";
+	tx-region = <&cpuapp_cpusys_ipc_shm>;
+	rx-region = <&cpusys_cpuapp_ipc_shm>;
+};
+
+&cpuapp_cpuppr_ipc {
+	mbox-names = "rx", "tx";
+	tx-region = <&cpuapp_cpuppr_ipc_shm>;
+	rx-region = <&cpuppr_cpuapp_ipc_shm>;
+};
+
+&cpuapp_cpuflpr_ipc {
+	mbox-names = "rx", "tx";
+	tx-region = <&cpuapp_cpuflpr_ipc_shm>;
+	rx-region = <&cpuflpr_cpuapp_ipc_shm>;
+};
+
+&cpuapp_dma_region {
+	status = "okay";
+};
+
+&dma_fast_region {
+	status = "okay";
+};
+
+ironside_se_boot_report: &cpuapp_ironside_se_boot_report {};
+
+boot_partition: &cpuapp_boot_partition {
+	label = "mcuboot";
+};
+
+slot0_partition: &cpuapp_slot0_partition {
+	label = "image-0";
+};
+
+secondary_app_partition: &cpuapp_slot1_partition {};
+
+slot1_partition: &cpuapp_slot1_partition {
+	label = "image-1";
+};
+
+slot2_partition: &cpurad_slot0_partition {
+	label = "image-2";
+};
+
+slot3_partition: &cpurad_slot1_partition {
+	label = "image-3";
+};
+
+&cpuppr_vpr {
+	execution-memory = <&cpuppr_code_data>;
+	source-memory = <&cpuppr_code_partition>;
+};
+
+&cpuflpr_vpr {
+	execution-memory = <&cpuflpr_code_data>;
+	source-memory = <&cpuflpr_code_partition>;
+};
+
+&nfct {
+	status = "okay";
+	memory-regions = <&cpuapp_dma_region>;
+};
+
+/* Leave one channel for CPURAD */
+&gpiote130 {
+	status = "okay";
+	owned-channels = <0 1 2 3 4 5 6>;
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio9 {
+	status = "okay";
+};
+
+&grtc {
+	status = "okay";
+	child-owned-channels = <5 6>;
+	nonsecure-channels = <5 6>;
+	owned-channels = <4 5 6>;
+};
+
+&uart120 {
+	current-speed = <115200>;
+	pinctrl-0 = <&uart120_default>;
+	pinctrl-1 = <&uart120_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&uart135 {
+	current-speed = <115200>;
+	pinctrl-0 = <&uart135_default>;
+	pinctrl-1 = <&uart135_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&uart131 {
+	status = "okay";
+	memory-regions = <&cpuapp_dma_region>;
+	current-speed = <115200>;
+	pinctrl-0 = <&uart131_default>;
+	pinctrl-1 = <&uart131_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&gpio6 {
+	status = "okay";
+};
+
+&exmif {
+	pinctrl-0 = <&exmif_default>;
+	pinctrl-1 = <&exmif_sleep>;
+	pinctrl-names = "default", "sleep";
+	status = "disabled";
+
+	mx25uw63: mx25uw6345g@0 {
+		compatible = "mxicy,mx25u", "jedec,mspi-nor";
+		status = "disabled";
+		reg = <0>;
+		jedec-id = [c2 84 37];
+		sfdp-bfp = [
+			e5 20 8a ff  ff ff ff 03  00 ff 00 ff  00 ff 00 ff
+			ee ff ff ff  ff ff 00 ff  ff ff 00 ff  0c 20 10 d8
+			00 ff 00 ff  87 79 01 00  84 12 00 c4  cc 04 67 46
+			30 b0 30 b0  f4 bd d5 5c  00 00 00 ff  10 10 00 20
+			00 00 00 00  00 00 7c 23  48 00 00 00  00 00 88 88
+		];
+		sfdp-ff05 = [
+			00 ee c0 69  72 72 71 71  00 d8 f7 f6  00 0a 00 00
+			14 45 98 80
+		];
+		sfdp-ff84 = [
+			43 06 0f 00  21 dc ff ff
+		];
+		size = <67108864>;
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <30000>;
+		reset-gpios = <&gpio6 12 GPIO_ACTIVE_LOW>;
+		t-reset-pulse = <10000>;
+		t-reset-recovery = <35000>;
+
+		mspi-max-frequency = <DT_FREQ_M(50)>;
+		mspi-io-mode = "MSPI_IO_MODE_OCTAL";
+		mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
+		mspi-hardware-ce-num = <1>;
+		mspi-cpp-mode = "MSPI_CPP_MODE_0";
+		mspi-endian = "MSPI_BIG_ENDIAN";
+		mspi-ce-polarity = "MSPI_CE_ACTIVE_LOW";
+	};
+};
+
+&cpuapp_ieee802154 {
+	status = "okay";
+};
+
+zephyr_udc0: &usbhs {
+	status = "okay";
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+		status = "okay";
+	};
+};
+
+&canpll {
+	status = "okay";
+};
+
+&can120 {
+	status = "okay";
+	pinctrl-0 = <&can120_default>;
+	pinctrl-names = "default";
+};
+
+&pwm120 {
+	status = "okay";
+	pinctrl-0 = <&pwm120_default>;
+	pinctrl-1 = <&pwm120_sleep>;
+	pinctrl-names = "default", "sleep";
+	memory-regions = <&dma_fast_region>;
+};
+
+&adc {
+	memory-regions = <&cpuapp_dma_region>;
+	status = "okay";
+};
+
+/* Trim this RAM block for power management related features. */
+&cpuapp_ram0 {
+	reg = <0x22000000 (DT_SIZE_K(32) - 256)>;
+	ranges = <0x0 0x22000000 (0x8000 - 0x100)>;
+};
+
+/ {
+	soc {
+		/* cache control functions - must be executed from local SRAM */
+		pm_ramfunc: cpuapp_s2ram@22007f00 {
+			compatible = "zephyr,memory-region", "mmio-sram";
+			reg = <0x22007f00 192>;
+			zephyr,memory-region = "PMLocalRamfunc";
+		};
+
+		/* temporary stack for S2RAM resume logic */
+		pm_s2ram_stack: cpuapp_s2ram_stack@22007fc8  {
+			compatible = "zephyr,memory-region", "mmio-sram";
+			reg = <0x22007fc8 16>;
+			zephyr,memory-region = "pm_s2ram_stack";
+		};
+
+		/* run-time common mcuboot S2RAM support section */
+		mcuboot_s2ram: cpuapp_s2ram@22007fd8  {
+			compatible = "zephyr,memory-region", "mmio-sram";
+			reg = <0x22007fd8 8>;
+			zephyr,memory-region = "mcuboot_s2ram_context";
+		};
+
+		/* run-time common S2RAM cpu context RAM */
+		pm_s2ram: cpuapp_s2ram@22007fe0 {
+			compatible = "zephyr,memory-region", "mmio-sram";
+			reg = <0x22007fe0 32>;
+			zephyr,memory-region = "pm_s2ram_context";
+		};
+	};
+};
+
+&i2c132 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	pinctrl-1 = <&i2c132_sleep>;
+	pinctrl-0 = <&i2c132_default>;
+	pinctrl-names = "default", "sleep";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	zephyr,concat-buf-size = <1024>;
+	memory-regions = <&cpuapp_dma_region>;
+
+	npm1300_ek_pmic: pmic@6b {
+		compatible = "nordic,npm1300";
+		reg = <0x6b>;
+		pmic_charger: charger {
+			compatible = "nordic,npm1300-charger";
+			term-microvolt = <4150000>;
+			term-warm-microvolt = <4000000>;
+			current-microamp = <150000>;
+			dischg-limit-microamp = <1000000>;
+			vbus-limit-microamp = <500000>;
+			thermistor-ohms = <0>;
+			thermistor-beta = <3380>;
+			charging-enable;
+		};
+		pmic_regulators: regulators {
+			compatible = "nordic,npm1300-regulator";
+			BUCK1 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+			};
+			BUCK2 {
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-boot-on;
+			};
+		};
+
+		npm1300_ek_leds: leds {
+			compatible = "nordic,npm1300-led";
+			nordic,led0-mode = "error";
+			nordic,led1-mode = "charging";
+			nordic,led2-mode = "host";
+		};
+	};
+
+	bme280_sensor: bme280@77 {
+		compatible = "bosch,bme280";
+		reg = <0x77>;
+		status = "okay";
+	};
+
+	si7210_sensor: si7210@30 {
+		compatible = "silabs,si7210";
+		reg = <0x30>;
+	};
+};
+
+#include <zephyr/dt-bindings/sensor/icm45686.h>
+
+&spi137 {
+	status = "okay";
+	pinctrl-0 = <&spi137_default>;
+	pinctrl-1 = <&spi137_sleep>;
+	pinctrl-names = "default", "sleep";
+	memory-regions = <&cpuapp_dma_region>;
+	cs-gpios = <&gpio0 7 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	icm45686: icm45686@0 {
+		status = "okay";
+		compatible = "invensense,icm45686";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		int-gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;
+		accel-pwr-mode = <ICM45686_DT_ACCEL_LN>;
+		accel-fs = <ICM45686_DT_ACCEL_FS_8>;
+		accel-odr = <ICM45686_DT_ACCEL_ODR_100>;
+		gyro-pwr-mode= <ICM45686_DT_GYRO_LN>;
+		gyro-fs = <ICM45686_DT_GYRO_FS_4000>;
+		gyro-odr = <ICM45686_DT_GYRO_ODR_100>;
+		fifo-watermark = <10>;
+	};
+};
+
+&spi134 {
+	status = "okay";
+	pinctrl-0 = <&spi134_default>;
+	pinctrl-1 = <&spi134_sleep>;
+	pinctrl-names = "default", "sleep";
+	memory-regions = <&cpuapp_dma_region>;
+	cs-gpios = <&gpio1 9 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	lis3dh: lis3dh@0{
+		compatible = "st,lis2dh";
+		reg = <0>;
+		irq-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;//, <&gpio0 17 GPIO_ACTIVE_HIGH>;
+		spi-max-frequency = <4000000>;
+	};
+};
+
+&spi133 {
+	status = "disabled";
+	pinctrl-0 = <&spi133_default>;
+	pinctrl-1 = <&spi133_sleep>;
+	pinctrl-names = "default", "sleep";
+	memory-regions = <&cpuapp_dma_region>;
+	cs-gpios = <&gpio2 7 (GPIO_ACTIVE_LOW)>;
+};
+
+&i2c133 {
+	compatible = "nordic,nrf-twim";
+	status = "disabled";
+	pinctrl-1 = <&i2c133_sleep>;
+	pinctrl-0 = <&i2c133_default>;
+	pinctrl-names = "default", "sleep";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	memory-regions = <&cpuapp_dma_region>;
+};
+
+dmic_dev: &pdm0 {
+	status = "okay";
+	pinctrl-0 = <&pdm0_default>;
+	memory-regions = <&dma_fast_region>;
+	pinctrl-names = "default";
+	clock-source = "PCLK32M";
+};

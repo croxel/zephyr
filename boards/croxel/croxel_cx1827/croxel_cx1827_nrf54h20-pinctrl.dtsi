@@ -1,0 +1,250 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&pinctrl {
+	/omit-if-no-ref/ uart120_default: uart120_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 7, 7)>;
+		};
+
+		group2 {
+			bias-pull-up;
+			psels = <NRF_PSEL(UART_RX, 7, 4)>;
+		};
+	};
+
+	/omit-if-no-ref/ uart120_sleep: uart120_sleep {
+		group1 {
+			low-power-enable;
+			psels = <NRF_PSEL(UART_TX, 7, 7)>,
+				<NRF_PSEL(UART_RX, 7, 4)>;
+		};
+	};
+
+	/omit-if-no-ref/ uart135_default: uart135_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 11)>;
+		};
+
+		group3 {
+			bias-pull-up;
+			psels = <NRF_PSEL(UART_RX, 0, 10)>;
+		};
+	};
+
+	/omit-if-no-ref/ uart135_sleep: uart135_sleep {
+		group1 {
+			low-power-enable;
+			psels = <NRF_PSEL(UART_TX, 0, 11)>,
+				<NRF_PSEL(UART_RX, 0, 10)>;
+		};
+	};
+
+	/omit-if-no-ref/ uart131_default: uart131_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 9, 0)>;
+		};
+
+		group3 {
+			bias-pull-up;
+			psels = <NRF_PSEL(UART_RX, 9, 1)>;
+		};
+	};
+
+	/omit-if-no-ref/ uart131_sleep: uart131_sleep {
+		group1 {
+			low-power-enable;
+			psels = <NRF_PSEL(UART_TX, 9, 0)>,
+				<NRF_PSEL(UART_RX, 9, 1)>;
+		};
+	};
+
+	/omit-if-no-ref/ exmif_default: exmif_default {
+		group1 {
+			psels = <NRF_PSEL(EXMIF_CK, 6, 0)>,
+				<NRF_PSEL(EXMIF_CS0, 6, 3)>,
+				<NRF_PSEL(EXMIF_RWDS, 6, 2)>,
+				<NRF_PSEL(EXMIF_DQ0, 6, 7)>,
+				<NRF_PSEL(EXMIF_DQ1, 6, 5)>,
+				<NRF_PSEL(EXMIF_DQ2, 6, 10)>,
+				<NRF_PSEL(EXMIF_DQ3, 6, 9)>,
+				<NRF_PSEL(EXMIF_DQ4, 6, 11)>,
+				<NRF_PSEL(EXMIF_DQ5, 6, 8)>,
+				<NRF_PSEL(EXMIF_DQ6, 6, 6)>,
+				<NRF_PSEL(EXMIF_DQ7, 6, 4)>;
+			nordic,drive-mode = <NRF_DRIVE_H0H1>;
+		};
+	};
+
+	/omit-if-no-ref/ exmif_sleep: exmif_sleep {
+		group1 {
+			low-power-enable;
+			psels = <NRF_PSEL(EXMIF_CK, 6, 0)>,
+				<NRF_PSEL(EXMIF_CS0, 6, 3)>,
+				<NRF_PSEL(EXMIF_RWDS, 6, 2)>,
+				<NRF_PSEL(EXMIF_DQ0, 6, 7)>,
+				<NRF_PSEL(EXMIF_DQ1, 6, 5)>,
+				<NRF_PSEL(EXMIF_DQ2, 6, 10)>,
+				<NRF_PSEL(EXMIF_DQ3, 6, 9)>,
+				<NRF_PSEL(EXMIF_DQ4, 6, 11)>,
+				<NRF_PSEL(EXMIF_DQ5, 6, 8)>,
+				<NRF_PSEL(EXMIF_DQ6, 6, 6)>,
+				<NRF_PSEL(EXMIF_DQ7, 6, 4)>;
+		};
+	};
+
+	/omit-if-no-ref/ can120_default: can120_default {
+		group1 {
+			psels = <NRF_PSEL(CAN_RX, 9, 4)>,
+				<NRF_PSEL(CAN_TX, 9, 5)>;
+		};
+	};
+
+	/omit-if-no-ref/ pwm120_default: pwm120_default {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 7, 0)>;
+			// psels = <NRF_PSEL(PWM_OUT0, 7, 0)>,
+			//	<NRF_PSEL(PWM_OUT1, 7, 1)>,
+			//	<NRF_PSEL(PWM_OUT2, 7, 2)>,
+			//	<NRF_PSEL(PWM_OUT3, 7, 3)>;
+		};
+	};
+
+	/omit-if-no-ref/ pwm120_sleep: pwm120_sleep {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 7, 0)>;
+			// psels = <NRF_PSEL(PWM_OUT0, 7, 0)>,
+			//	<NRF_PSEL(PWM_OUT1, 7, 1)>,
+			//	<NRF_PSEL(PWM_OUT2, 7, 2)>,
+			//	<NRF_PSEL(PWM_OUT3, 7, 3)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ i2c132_default: i2c132_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 2, 3)>,
+				<NRF_PSEL(TWIM_SDA, 2, 4)>;
+			bias-pull-up;
+		};
+	};
+
+	/omit-if-no-ref/ i2c132_sleep: i2c132_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 2, 3)>,
+				<NRF_PSEL(TWIM_SDA, 2, 4)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ spi137_default: spi137_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 2)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 9)>,
+				<NRF_PSEL(SPIM_MISO, 0, 8)>;
+		};
+	};
+
+	/omit-if-no-ref/ spi137_sleep: spi137_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 2)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 9)>,
+				<NRF_PSEL(SPIM_MISO, 0, 8)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ spi134_default: spi134_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 0)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 11)>,
+				<NRF_PSEL(SPIM_MISO, 1, 10)>;
+		};
+	};
+
+	/omit-if-no-ref/ spi134_sleep: spi134_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 0)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 11)>,
+				<NRF_PSEL(SPIM_MISO, 1, 10)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ spi133_default: spi133_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 2, 2)>,
+				<NRF_PSEL(SPIM_MOSI, 2, 5)>,
+				<NRF_PSEL(SPIM_MISO, 2, 6)>;
+		};
+	};
+
+	/omit-if-no-ref/ spi133_sleep: spi133_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 2, 2)>,
+				<NRF_PSEL(SPIM_MOSI, 2, 5)>,
+				<NRF_PSEL(SPIM_MISO, 2, 6)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ i2c133_default: i2c133_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 2, 2)>,
+				<NRF_PSEL(TWIM_SDA, 2, 5)>;
+			bias-pull-up;
+		};
+	};
+
+	/omit-if-no-ref/ i2c133_sleep: i2c133_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 2, 2)>,
+				<NRF_PSEL(TWIM_SDA, 2, 5)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ pdm0_default: pdm0_default {
+		group1 {
+			psels = <NRF_PSEL(PDM_CLK, 1, 1)>,
+				<NRF_PSEL(PDM_DIN, 1, 4)>;
+		};
+	};
+
+	/omit-if-no-ref/ pdm0_sleep: pdm0_sleep {
+		group1 {
+			psels = <NRF_PSEL(PDM_CLK, 1, 1)>,
+				<NRF_PSEL(PDM_DIN, 1, 4)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ grtc_default: grtc_default {
+		group1 {
+			psels = <NRF_PSEL(GRTC_CLKOUT_FAST, 1, 8)>,
+				<NRF_PSEL(GRTC_CLKOUT_32K, 0, 1)>;
+		};
+	};
+
+	/omit-if-no-ref/ grtc_sleep: grtc_sleep {
+		group1 {
+			psels = <NRF_PSEL(GRTC_CLKOUT_FAST, 1, 8)>,
+				<NRF_PSEL(GRTC_CLKOUT_32K, 0, 1)>;
+			low-power-enable;
+		};
+	};
+
+	/omit-if-no-ref/ tpiu_default: tpiu_default {
+		group1 {
+			psels = <NRF_PSEL(TPIU_CLOCK, 7, 3)>,
+				<NRF_PSEL(TPIU_DATA0, 7, 4)>,
+				<NRF_PSEL(TPIU_DATA1, 7, 5)>,
+				<NRF_PSEL(TPIU_DATA2, 7, 6)>,
+				<NRF_PSEL(TPIU_DATA3, 7, 7)>;
+			nordic,drive-mode = <NRF_DRIVE_H0H1>;
+		};
+	};
+};

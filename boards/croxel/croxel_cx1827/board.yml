@@ -1,0 +1,51 @@
+board:
+  name: croxel_cx1827
+  full_name: Croxel CX1827
+  vendor: croxel
+  socs:
+  - name: nrf54h20
+    variants:
+    - name: xip
+      cpucluster: cpuppr
+    - name: xip
+      cpucluster: cpuflpr
+runners:
+  run_once:
+    '--recover':
+    - runners:
+      - nrfutil
+      run: first
+      groups:
+      - boards:
+        - croxel_cx1827/nrf54h20/cpuapp
+        - croxel_cx1827/nrf54h20/cpurad
+        - croxel_cx1827/nrf54h20/cpuppr
+        - croxel_cx1827/nrf54h20/cpuppr/xip
+        - croxel_cx1827/nrf54h20/cpuflpr
+        - croxel_cx1827/nrf54h20/cpuflpr/xip
+    '--erase':
+    - runners:
+      - jlink
+      - nrfutil
+      run: first
+      groups:
+      - boards:
+        - croxel_cx1827/nrf54h20/cpuapp
+        - croxel_cx1827/nrf54h20/cpurad
+        - croxel_cx1827/nrf54h20/cpuppr
+        - croxel_cx1827/nrf54h20/cpuppr/xip
+        - croxel_cx1827/nrf54h20/cpuflpr
+        - croxel_cx1827/nrf54h20/cpuflpr/xip
+    '--reset':
+    - runners:
+      - jlink
+      - nrfutil
+      run: last
+      groups:
+      - boards:
+        - croxel_cx1827/nrf54h20/cpuapp
+        - croxel_cx1827/nrf54h20/cpurad
+        - croxel_cx1827/nrf54h20/cpuppr
+        - croxel_cx1827/nrf54h20/cpuppr/xip
+        - croxel_cx1827/nrf54h20/cpuflpr
+        - croxel_cx1827/nrf54h20/cpuflpr/xip
